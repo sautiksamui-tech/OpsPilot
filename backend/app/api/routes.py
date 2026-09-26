@@ -23,7 +23,7 @@ from ..agent.scenarios import SCENARIOS
 from ..tools.registry import get_tool_catalog
 from ..db.database import db
 
-router = APIRouter(prefix="/api")
+router = APIRouter()
 
 async def run_agent_workflow(initial_state: OpsPilotState):
     """

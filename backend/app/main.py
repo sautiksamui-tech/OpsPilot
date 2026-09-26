@@ -18,9 +18,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount routes with /api prefix and fallback without prefix for Vercel/proxies
+app.include_router(router, prefix="/api")
 app.include_router(router)
 
 @app.get("/")
+@app.get("/api")
+@app.get("/api/")
 def root():
     return {
         "app": settings.app_name,
