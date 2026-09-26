@@ -14,13 +14,32 @@ export function useAgentRun() {
 
   const API_BASE = import.meta.env.VITE_API_URL || '';
 
+  const fetchEvents = useCallback(async (runId) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/runs/${runId}/events/list`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.events && Array.isArray(data.events)) {
+          setEvents(data.events);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch events list:', e);
+    }
+  }, [API_BASE]);
+
   const fetchRunState = useCallback(async (runId) => {
     try {
       const res = await fetch(`${API_BASE}/api/runs/${runId}`);
       if (res.ok) {
         const data = await res.json();
         setRunState(data);
-        if (['APPROVAL_REQUIRED', 'AWAITING_APPROVAL'].includes(data.payment_state)) {
+        if (
+          ['APPROVAL_REQUIRED', 'AWAITING_APPROVAL', 'PAID', 'COMPLETED', 'BLOCKED', 'FAILED', 'CANCELLED'].includes(
+            data.payment_state
+          ) ||
+          ['APPROVAL_REQUIRED', 'AWAITING_APPROVAL', 'COMPLETED', 'BLOCKED', 'FAILED', 'CANCELLED'].includes(data.status)
+        ) {
           setIsLoading(false);
         }
       }
@@ -66,7 +85,11 @@ export function useAgentRun() {
 
       const data = await res.json();
       setCurrentRunId(data.run_id);
-      fetchRunState(data.run_id);
+      await Promise.all([
+        fetchRunState(data.run_id),
+        fetchAuditLogs(data.run_id),
+        fetchEvents(data.run_id),
+      ]);
     } catch (err) {
       setError(err.message);
       setIsLoading(false);
@@ -99,8 +122,11 @@ export function useAgentRun() {
       }
 
       const updated = await res.json();
-      await fetchRunState(runId);
-      await fetchAuditLogs(runId);
+      await Promise.all([
+        fetchRunState(runId),
+        fetchAuditLogs(runId),
+        fetchEvents(runId),
+      ]);
     } catch (err) {
       console.error('Approval submission error:', err);
       setError(err.message);
@@ -171,7 +197,28 @@ export function useAgentRun() {
         sse.close();
       }
     };
-  }, [currentRunId, fetchRunState, fetchAuditLogs]);
+  }, [currentRunId, fetchRunState, fetchAuditLogs, fetchEvents]);
+
+  // Periodic polling fallback while in flight or awaiting confirmation
+  useEffect(() => {
+    if (!currentRunId) return;
+
+    const isDone =
+      runState &&
+      ['PAID', 'COMPLETED', 'BLOCKED', 'FAILED', 'CANCELLED', 'APPROVAL_REQUIRED', 'AWAITING_APPROVAL'].includes(
+        runState.payment_state
+      );
+
+    if (isDone) return;
+
+    const interval = setInterval(() => {
+      fetchRunState(currentRunId);
+      fetchAuditLogs(currentRunId);
+      fetchEvents(currentRunId);
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [currentRunId, runState, fetchRunState, fetchAuditLogs, fetchEvents]);
 
   return {
     currentRunId,
@@ -187,5 +234,6 @@ export function useAgentRun() {
     startRun,
     handleApproval,
     fetchRunState,
+    fetchEvents,
   };
 }

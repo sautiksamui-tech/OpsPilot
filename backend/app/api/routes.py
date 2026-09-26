@@ -73,7 +73,7 @@ def list_scenarios():
     return SCENARIOS
 
 @router.post("/agent/run")
-async def start_run(req: RunRequest, background_tasks: BackgroundTasks):
+async def start_run(req: RunRequest):
     run_id = f"run_{uuid.uuid4().hex[:10]}"
     init_state = create_initial_state(
         run_id=run_id,
@@ -84,12 +84,14 @@ async def start_run(req: RunRequest, background_tasks: BackgroundTasks):
     )
     db.save_run_state(init_state)
 
-    # Launch graph workflow in background
-    background_tasks.add_task(run_agent_workflow, init_state)
+    # In serverless environments (Vercel), execute synchronously so LangGraph state persists before response returns
+    await run_agent_workflow(init_state)
+    final_state = db.get_run_state(run_id) or init_state
 
     return {
         "run_id": run_id,
-        "status": "STARTING",
+        "status": final_state.get("status", "STARTING"),
+        "payment_state": final_state.get("payment_state"),
         "user_request": req.prompt,
         "scenario_id": req.scenario_id,
     }
@@ -146,8 +148,16 @@ async def stream_events(run_id: str):
 
     return EventSourceResponse(event_generator())
 
+@router.get("/runs/{run_id}/events/list")
+def get_run_events(run_id: str):
+    """
+    Direct event polling endpoint for robust fallback across serverless platforms.
+    """
+    events = db.get_events_for_run(run_id)
+    return {"run_id": run_id, "events": events}
+
 @router.post("/runs/{run_id}/approve")
-async def approve_run(run_id: str, req: ApprovalRequest, background_tasks: BackgroundTasks):
+async def approve_run(run_id: str, req: ApprovalRequest):
     """
     Human Authorization Gate: unpauses and resumes graph execution.
     """
@@ -203,15 +213,18 @@ async def approve_run(run_id: str, req: ApprovalRequest, background_tasks: Backg
     state["status"] = "HUMAN_APPROVED" if req.approved else "CANCELLED"
     db.save_run_state(state)
 
-    # Resume graph execution
-    background_tasks.add_task(run_agent_workflow, state)
-
-    return {"run_id": run_id, "status": state["status"], "payment_state": state["payment_state"]}
+    if req.approved:
+        # Resume graph execution synchronously
+        await run_agent_workflow(state)
+        final_state = db.get_run_state(run_id) or state
+        return {"run_id": run_id, "status": final_state.get("status", "COMPLETED"), "payment_state": final_state.get("payment_state", PaymentLifecycleState.PAID.value)}
+    else:
+        return {"run_id": run_id, "status": state["status"], "payment_state": state["payment_state"]}
 
 @router.post("/runs/{run_id}/reject")
-async def reject_run(run_id: str, req: ApprovalRequest, background_tasks: BackgroundTasks):
+async def reject_run(run_id: str, req: ApprovalRequest):
     req.approved = False
-    return await approve_run(run_id, req, background_tasks)
+    return await approve_run(run_id, req)
 
 @router.get("/runs/{run_id}/audit")
 def get_audit(run_id: str):

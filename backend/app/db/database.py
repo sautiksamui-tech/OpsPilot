@@ -14,10 +14,22 @@ class DatabaseManager:
     def __init__(self, db_file: str = str(DB_PATH)):
         self.db_file = db_file
         self._subscribers: Dict[str, List[asyncio.Queue]] = {}
-        self.init_db()
+        try:
+            self.init_db()
+        except Exception as e:
+            # If default db_file fails due to readonly filesystem or missing permissions, fallback to /tmp
+            if self.db_file != "/tmp/opspilot.db":
+                self.db_file = "/tmp/opspilot.db"
+                self.init_db()
+            else:
+                raise e
 
     def _get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_file)
+        import os
+        db_dir = os.path.dirname(os.path.abspath(self.db_file))
+        if db_dir:
+            os.makedirs(db_dir, exist_ok=True)
+        conn = sqlite3.connect(self.db_file, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         return conn
 

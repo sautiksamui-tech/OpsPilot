@@ -4,7 +4,10 @@ from pydantic import BaseModel
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 WORKSPACE_DIR = BASE_DIR
-DB_PATH = BASE_DIR / "opspilot.db"
+if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or (os.path.exists("/tmp") and os.name != "nt"):
+    DB_PATH = Path("/tmp/opspilot.db")
+else:
+    DB_PATH = BASE_DIR / "opspilot.db"
 
 class Settings(BaseModel):
     app_name: str = "OpsPilot"
