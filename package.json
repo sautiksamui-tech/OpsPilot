@@ -1,0 +1,21 @@
+{
+  "name": "opspilot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "OpsPilot - AI Business Operator for Payments, Exceptions & Business Operations",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "dev": "cd frontend && npm run dev",
+    "install:frontend": "cd frontend && npm install"
+  },
+  "keywords": [
+    "opspilot",
+    "swytchcode",
+    "ai-operator",
+    "langgraph",
+    "fastapi",
+    "react"
+  ],
+  "author": "OpsPilot Team",
+  "license": "MIT"
+}
