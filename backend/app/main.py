@@ -1,7 +1,7 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from .config import settings
 from .api.routes import router
 
@@ -39,7 +39,7 @@ def get_index_html() -> str:
             except Exception:
                 pass
     
-    # Inline fallback HTML
+    # Embedded production HTML
     return """<!doctype html>
 <html lang="en" class="dark">
   <head>
@@ -60,6 +60,8 @@ def get_index_html() -> str:
 
 @app.get("/")
 @app.get("/index.html")
+@app.get("/api/index.py")
+@app.get("/api/index")
 @app.get("/command")
 @app.get("/admin")
 def serve_ui():
@@ -90,3 +92,11 @@ def api_root():
         "scenarios": "/api/scenarios",
         "tools": "/api/tools",
     }
+
+# 404 Fallback for SPA routing
+@app.exception_handler(404)
+async def custom_404_handler(request: Request, exc):
+    path = request.url.path
+    if path.startswith("/api/") or path == "/api":
+        return JSONResponse(status_code=404, content={"detail": f"API route '{path}' not found."})
+    return HTMLResponse(content=get_index_html(), status_code=200)
