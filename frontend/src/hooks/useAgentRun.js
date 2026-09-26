@@ -12,9 +12,11 @@ export function useAgentRun() {
 
   const eventSourceRef = useRef(null);
 
+  const API_BASE = import.meta.env.VITE_API_URL || '';
+
   const fetchRunState = useCallback(async (runId) => {
     try {
-      const res = await fetch(`/api/runs/${runId}`);
+      const res = await fetch(`${API_BASE}/api/runs/${runId}`);
       if (res.ok) {
         const data = await res.json();
         setRunState(data);
@@ -25,11 +27,11 @@ export function useAgentRun() {
     } catch (e) {
       console.error('Failed to fetch run state:', e);
     }
-  }, []);
+  }, [API_BASE]);
 
   const fetchAuditLogs = useCallback(async (runId) => {
     try {
-      const res = await fetch(`/api/runs/${runId}/audit`);
+      const res = await fetch(`${API_BASE}/api/runs/${runId}/audit`);
       if (res.ok) {
         const data = await res.json();
         setAuditLogs(data.audit_trail || []);
@@ -37,7 +39,7 @@ export function useAgentRun() {
     } catch (e) {
       console.error('Failed to fetch audit logs:', e);
     }
-  }, []);
+  }, [API_BASE]);
 
   const startRun = async (prompt, scenarioId = activeScenario, isDemo = demoMode, autoApprove = false) => {
     setIsLoading(true);
@@ -47,7 +49,7 @@ export function useAgentRun() {
     setRunState(null);
 
     try {
-      const res = await fetch('/api/agent/run', {
+      const res = await fetch(`${API_BASE}/api/agent/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -80,7 +82,7 @@ export function useAgentRun() {
     setIsLoading(true);
 
     try {
-      const endpoint = approved ? `/api/runs/${runId}/approve` : `/api/runs/${runId}/reject`;
+      const endpoint = approved ? `${API_BASE}/api/runs/${runId}/approve` : `${API_BASE}/api/runs/${runId}/reject`;
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -115,7 +117,7 @@ export function useAgentRun() {
       eventSourceRef.current.close();
     }
 
-    const sse = new EventSource(`/api/runs/${currentRunId}/events`);
+    const sse = new EventSource(`${API_BASE}/api/runs/${currentRunId}/events`);
     eventSourceRef.current = sse;
 
     sse.addEventListener('agent_event', (e) => {
