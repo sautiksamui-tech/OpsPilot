@@ -3,6 +3,12 @@
 > **"Your AI Operator for Payments, Exceptions & Business Operations."**  
 > *Track 6 (AI Business Operator Agent) — Swytchcode Solo Buildathon*
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-ops--pilot--livid.vercel.app-22c55e?style=for-the-badge&logo=vercel&logoColor=white)](https://ops-pilot-livid.vercel.app/)
+[![Swytchcode MCP](https://img.shields.io/badge/Swytchcode%20MCP-5%20Providers%20%2F%2019%20Tools-6366f1?style=for-the-badge)](https://ops-pilot-livid.vercel.app/)
+[![Tests](https://img.shields.io/badge/Tests-25%20Passing-emerald?style=for-the-badge)](https://ops-pilot-livid.vercel.app/)
+
+🌐 **Live Production App**: [https://ops-pilot-livid.vercel.app/](https://ops-pilot-livid.vercel.app/)
+
 ---
 
 ## 🌟 What is OpsPilot?
